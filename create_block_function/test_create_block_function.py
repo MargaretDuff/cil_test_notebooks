@@ -50,20 +50,35 @@ alpha=0.01
 
 # Initialize the lists containing the F_i's and A_i's
 f_subsets = []
-A_subsets = []
 
 
 
-# Define F_i's and A_i's - data fit part
+
+# Define F_i's  - data fit part
 for i in range(n_subsets):
     # Define F_i and put into list
     fi = 0.5 * L2NormSquared(b = partitioned_data[i])
     f_subsets.append(fi)
-    # Define A_i and put into list 
+   
 F1=0.5*BlockL2NormSquared(b=partitioned_data)
 F2 = BlockFunction(*f_subsets)
-
+F3 =0.5*BlockL2NormSquared( geometry=partitioned_data.geometry, b=partitioned_data)
 x0=partitioned_data.geometry.allocate(0)
 
-print(F1(x0),F2(x0))
+print(F1(x0),F2(x0), F3(x0))
+#%%
+f_subsets = []
+# Define F_i's- data fit part
+for i in range(n_subsets):
+    # Define F_i and put into list
+    fi = 0.5 * L2NormSquared(b = None)
+    f_subsets.append(fi)
+ 
+
+F2 = BlockFunction(*f_subsets)
+F3 =0.5*BlockL2NormSquared( geometry=partitioned_data.geometry)
+x0=partitioned_data.geometry.allocate(0)
+
+print(F2(x0), F3(x0))
+
 #%%
