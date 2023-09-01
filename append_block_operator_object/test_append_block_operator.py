@@ -78,7 +78,9 @@ f_reg = ig2D.spacing[0] * alpha * MixedL21Norm() # take into account the pixel s
 Grad = GradientOperator(A[0].domain, backend='c', correlation='SpaceChannel')
 
 # Define F and K
-F = BlockFunction(*f_subsets, f_reg)
+F = BlockFunction(*f_subsets)
+F_Test=F.append( f_reg)
+F=F.append(BlockFunction(f_reg))
 K = A.append( BlockOperator(Grad))
 K = A.append( Grad)
 
