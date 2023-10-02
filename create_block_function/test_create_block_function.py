@@ -3,7 +3,7 @@
   
 from cil.optimisation.algorithms import PDHG, SPDHG
 from cil.optimisation.operators import GradientOperator, BlockOperator
-from cil.optimisation.functions import IndicatorBox, BlockFunction, L2NormSquared, MixedL21Norm, BlockL2NormSquared
+from cil.optimisation.functions import IndicatorBox, BlockFunction, L2NormSquared, MixedL21Norm
  
 from cil.io import ZEISSDataReader
  
@@ -60,12 +60,11 @@ for i in range(n_subsets):
     fi = 0.5 * L2NormSquared(b = partitioned_data[i])
     f_subsets.append(fi)
    
-F1=0.5*BlockL2NormSquared(b=partitioned_data)
+F1=0.5*L2NormSquared(b=partitioned_data)
 F2 = BlockFunction(*f_subsets)
-F3 =0.5*BlockL2NormSquared( geometry=partitioned_data.geometry, b=partitioned_data)
 x0=partitioned_data.geometry.allocate(0)
 
-print(F1(x0),F2(x0), F3(x0))
+print(F1(x0),F2(x0))
 #%%
 f_subsets = []
 # Define F_i's- data fit part
@@ -76,7 +75,7 @@ for i in range(n_subsets):
  
 
 F2 = BlockFunction(*f_subsets)
-F3 =0.5*BlockL2NormSquared( geometry=partitioned_data.geometry)
+F3 =0.5*L2NormSquared( geometry=partitioned_data.geometry)
 x0=partitioned_data.geometry.allocate(0)
 
 print(F2(x0), F3(x0))

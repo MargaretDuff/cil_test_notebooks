@@ -38,51 +38,43 @@ print(data)
 
 
 #%%
-# Define number of subsets
+
 n_subsets = 10
-
-#We sequentially partition the data into the number of subsets using the data partitioner
 partitioned_data=data.partition(n_subsets, 'sequential')
-
 
 y1=BlockDataContainer(*[partitioned_data[i] for i in range(5)])
 y2=BlockDataContainer(*[partitioned_data[i] for i in range(5,10)])
 
-partitioned_data2=y1.append(y2)
+y1.append(y2)
 
-print(partitioned_data2.shape)
+show2D(y1-partitioned_data)
+print((y1-partitioned_data).norm())
+print(y1.shape)
 print(partitioned_data.shape)
 #%%
 alpha=0.01
 
 
-# Initialize the lists containing the F_i's and A_i's
+
+
+# Define F_i's - data fit part
 f_subsets = []
-A_subsets = []
-
-
-
-# Define F_i's and A_i's - data fit part
 for i in range(n_subsets):
     # Define F_i and put into list
     fi = 0.5 * L2NormSquared(b = partitioned_data[i])
     f_subsets.append(fi)
-    # Define A_i and put into list 
+F = BlockFunction(*f_subsets)
 
 ageom_subset = partitioned_data.geometry
 A = ProjectionOperator(ig2D, ageom_subset)
 
     
-# Define F_{n+1} and A_{n+1} - regularization part
+# Define F_{n+1} and A_{n+1} - regularization part - and append
 f_reg = ig2D.spacing[0] * alpha * MixedL21Norm() # take into account the pixel size with ig2D.spacing
 Grad = GradientOperator(A[0].domain, backend='c', correlation='SpaceChannel')
 
-# Define F and K
-F = BlockFunction(*f_subsets)
-F_Test=F.append( f_reg)
-F=F.append(BlockFunction(f_reg))
-K = A.append( BlockOperator(Grad))
-K = A.append( Grad)
+F.append(BlockFunction(f_reg))
+A.append( BlockOperator(Grad))
 
 # Define G
 G = IndicatorBox(lower=0)
@@ -91,8 +83,9 @@ G = IndicatorBox(lower=0)
 prob = [1 / (2 * n_subsets)] * n_subsets + [1 / 2]
 
 # Setup and run SPDHG for 5 epochs
-spdhg_explicit = SPDHG(f = F, g = G, operator = K,  max_iteration = 5 * 2 * n_subsets,
+spdhg_explicit = SPDHG(f = F, g = G, operator = A,  max_iteration = 5 * 2 * n_subsets,
             update_objective_interval = 2 * n_subsets, prob=prob )
+
 spdhg_explicit.run()
 
 # %%
