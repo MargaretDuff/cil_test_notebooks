@@ -10,7 +10,7 @@ from cil.optimisation.algorithms import SPDHG, FISTA
 from cil.optimisation.functions import BlockFunction
 from cil.utilities.quality_measures import mse
 from cil.framework import ImageData
-from cil.processors import  Padder, Slicer
+from cil.processors import  Padder, Slicer, AbsorptionTransmissionConverter
 import matplotlib.pyplot as plt
 import json
 import os
@@ -27,9 +27,10 @@ import sys
 #     alpha  = float(sys.argv[4])
 #else:
 n_subs = 36
-gamma = .1
+gamma = 10
 epochs = 20
-alpha = 5
+alpha = 2
+
 
 amin = 0
 amax = 1.5
@@ -76,26 +77,38 @@ show_geometry(AG, ig)
 
 # %%
 
-ad = AcquisitionData(data, geometry=AG)
+ad = AcquisitionData(data/data.max(), geometry=AG)
 
 ad.reorder('tigre')
+
+#%%
+show2D(ad)
+K=AbsorptionTransmissionConverter()
+
+# %%
+# Test in 2D
+data2d = ad.get_slice(vertical='centre')
+ig2d = ig.get_slice(vertical='centre')
+
+
+
 #%%
 
-fdk = FDK(ad, ig).run()
+fdk = FDK(data2d, ig2d).run()
 
 # %%
 show2D(fdk)
 # %%
 roi = {'horizontal':(2,254,1)}
 processor = Slicer(roi)
-processor.set_input(ad)
+processor.set_input(data2d)
 data_sliced= processor.get_output()
 
 padsize = 50
 ad_pad = Padder.constant(pad_width={'horizontal': padsize})(data_sliced)
 show2D(ad_pad)
 
-fdk_pad=FDK(ad_pad, ig).run()
+fdk_pad=FDK(ad_pad, ig2d).run()
 show2D(fdk_pad)
 
 #%% 
@@ -110,18 +123,18 @@ g = alpha * TotalVariation(max_iteration=5, lower=0)
 #%%
 #SPDHG
 sdata = ad_pad.partition(n_subs, 'staggered')
-A = ProjectionOperator(ig, sdata.geometry)
-
-f = [L2NormSquared(b=el/A[0].norm()) for el in sdata]
+A = ProjectionOperator(ig2d, sdata.geometry)
+K=AbsorptionTransmissionConverter()
+f = [WeightedL2NormSquared(b=el, weight=np.mean(K(data2d))/K(el)) for el in sdata]
 f = BlockFunction(*f)
 # %%
 
-spdhg = SPDHG(f=f, g=g*(1/A[0].norm())**2, operator=A*(1/A[0].norm()), max_iteration=100 * n_subs,\
-      update_objective_interval=1,\
-      gamma=gamma, initial=fdk_pad)
+spdhg = SPDHG(f=f, g=g, operator=A, max_iteration=epochs * n_subs,\
+      update_objective_interval=n_subs,
+      gamma=gamma, initial=fdk_pad, rho=.8 )
 #%%
 for i in range(100):
-     spdhg.run(   1  , verbose=2, print_interval=5)
+     spdhg.run(   n_subs , verbose=2, print_interval=n_subs)
      show2D(spdhg.x)
 # %%
 

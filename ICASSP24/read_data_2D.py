@@ -27,9 +27,10 @@ import sys
 #     alpha  = float(sys.argv[4])
 #else:
 n_subs = 36
-gamma = .1
+gamma = 10
 epochs = 20
-alpha = 5
+alpha = 2
+rho=.8
 
 amin = 0
 amax = 1.5
@@ -76,26 +77,35 @@ show_geometry(AG, ig)
 
 # %%
 
-ad = AcquisitionData(data, geometry=AG)
+ad = AcquisitionData(data/data.max(), geometry=AG)
 
 ad.reorder('tigre')
+
+# %%
+# Test in 2D
+data2d = ad.get_slice(vertical='centre')
+ig2d = ig.get_slice(vertical='centre')
+
+
 #%%
 
-fdk = FDK(ad, ig).run()
+#%%
+
+fdk = FDK(data2d, ig2d).run()
 
 # %%
 show2D(fdk)
 # %%
 roi = {'horizontal':(2,254,1)}
 processor = Slicer(roi)
-processor.set_input(ad)
+processor.set_input(data2d)
 data_sliced= processor.get_output()
 
 padsize = 50
 ad_pad = Padder.constant(pad_width={'horizontal': padsize})(data_sliced)
 show2D(ad_pad)
 
-fdk_pad=FDK(ad_pad, ig).run()
+fdk_pad=FDK(ad_pad, ig2d).run()
 show2D(fdk_pad)
 
 #%% 
@@ -107,21 +117,39 @@ show2D(fdk_pad)
 #%%
 g = alpha * TotalVariation(max_iteration=5, lower=0)
 
+
+
+
+#%% SPDHG
+sdata = ad_pad.partition(n_subs, 'staggered')
+A = ProjectionOperator(ig2d, sdata.geometry)
+
+f = [L2NormSquared(b=el) for el in sdata]
+f = BlockFunction(*f)
+# %%
+
+spdhg = SPDHG(f=f, g=g, operator=A, max_iteration=epochs * n_subs,\
+      update_objective_interval=n_subs,
+      gamma=gamma, initial=fdk_pad, rho=.8 )
+#%%
+for i in range(100):
+     spdhg.run(   n_subs  , verbose=2, print_interval=n_subs)
+     show2D(spdhg.x)
 #%%
 #SPDHG
 sdata = ad_pad.partition(n_subs, 'staggered')
-A = ProjectionOperator(ig, sdata.geometry)
+A = ProjectionOperator(ig2d, sdata.geometry)
 
 f = [L2NormSquared(b=el/A[0].norm()) for el in sdata]
 f = BlockFunction(*f)
 # %%
 
-spdhg = SPDHG(f=f, g=g*(1/A[0].norm())**2, operator=A*(1/A[0].norm()), max_iteration=100 * n_subs,\
-      update_objective_interval=1,\
-      gamma=gamma, initial=fdk_pad)
+spdhg = SPDHG(f=f, g=g*(1/A[0].norm())**2, operator=A*(1/A[0].norm()), max_iteration=10000 * n_subs,\
+      update_objective_interval=n_subs*100,
+      gamma=gamma, initial=fdk_pad, rho=.8 )
 #%%
 for i in range(100):
-     spdhg.run(   1  , verbose=2, print_interval=5)
+     spdhg.run(   n_subs*100  , verbose=2, print_interval=n_subs*50)
      show2D(spdhg.x)
 # %%
 
