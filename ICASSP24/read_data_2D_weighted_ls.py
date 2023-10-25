@@ -29,7 +29,7 @@ import sys
 n_subs = 36
 gamma = 10
 epochs = 20
-alpha = 2
+alpha = .1
 
 
 amin = 0
