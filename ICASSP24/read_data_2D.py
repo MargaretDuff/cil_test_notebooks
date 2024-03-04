@@ -27,10 +27,10 @@ import sys
 #     alpha  = float(sys.argv[4])
 #else:
 n_subs = 36
-gamma = 10
+gamma = .1
 epochs = 20
-alpha = .1
-rho=.8
+alpha = 10
+rho=.99
 
 amin = 0
 amax = 1.5
@@ -115,7 +115,7 @@ show2D(fdk_pad)
 
 
 #%%
-g = alpha * TotalVariation(max_iteration=5, lower=0)
+g = alpha * TotalVariation(max_iteration=100, lower=0)
 
 
 
@@ -128,13 +128,17 @@ f = [L2NormSquared(b=el) for el in sdata]
 f = BlockFunction(*f)
 # %%
 
-spdhg = SPDHG(f=f, g=g, operator=A, max_iteration=epochs * n_subs,\
+spdhg = SPDHG(f=f, g=g, operator=A, max_iteration=200 * n_subs,\
       update_objective_interval=n_subs,
       gamma=gamma, initial=fdk_pad, rho=.8 )
 #%%
-for i in range(100):
-     spdhg.run(   n_subs  , verbose=2, print_interval=n_subs)
+for i in range(20):
+     spdhg.run(   10*n_subs  , verbose=2, print_interval=n_subs)
      show2D(spdhg.x)
+#%%
+plt.figure()
+plt.plot(range(101), spdhg.objective)    
+plt.show()
 #%%
 #SPDHG
 sdata = ad_pad.partition(n_subs, 'staggered')

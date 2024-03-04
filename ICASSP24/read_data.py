@@ -1,4 +1,3 @@
-#%%
 import numpy as np
 from cil.framework import ImageGeometry, AcquisitionGeometry, DataOrder
 from cil.utilities.display import show2D, show_geometry, show1D
@@ -10,7 +9,6 @@ from cil.optimisation.algorithms import SPDHG, FISTA
 from cil.optimisation.functions import BlockFunction
 from cil.utilities.quality_measures import mse
 from cil.framework import ImageData
-from cil.processors import  Padder, Slicer
 import matplotlib.pyplot as plt
 import json
 import os
@@ -20,16 +18,16 @@ import sys
 
 #%%
 # setup
-#if len(sys.argv) > 1:
-#     n_subs = int(sys.argv[1])
-#     gamma  = float(sys.argv[2])
-#     epochs = int(sys.argv[3])
-#     alpha  = float(sys.argv[4])
-#else:
-n_subs = 36
-gamma = .1
-epochs = 20
-alpha = 5
+if len(sys.argv) > 1:
+     n_subs = int(sys.argv[1])
+     gamma  = float(sys.argv[2])
+     epochs = int(sys.argv[3])
+     alpha  = float(sys.argv[4])
+else:
+     n_subs = 36
+     gamma = 10
+     epochs = 20
+     alpha = 100
 
 amin = 0
 amax = 1.5
@@ -42,7 +40,6 @@ dose = 'low'
 filename = f'/opt/data/ICASSP24/train/train/0000_sino_{dose}_dose.npy'
 
 data=np.asarray(np.load(filename,allow_pickle=True), dtype=np.float32)
-
 
 #%%
 print (data.shape)
@@ -86,17 +83,7 @@ fdk = FDK(ad, ig).run()
 # %%
 show2D(fdk)
 # %%
-roi = {'horizontal':(2,254,1)}
-processor = Slicer(roi)
-processor.set_input(ad)
-data_sliced= processor.get_output()
 
-padsize = 50
-ad_pad = Padder.constant(pad_width={'horizontal': padsize})(data_sliced)
-show2D(ad_pad)
-
-fdk_pad=FDK(ad_pad, ig).run()
-show2D(fdk_pad)
 
 #%% 
 # # Test in 2D
@@ -105,24 +92,22 @@ show2D(fdk_pad)
 
 
 #%%
-g = alpha * TotalVariation(max_iteration=5, lower=0)
+g = alpha * TotalVariation(max_iteration=5)
 
 #%%
 #SPDHG
-sdata = ad_pad.partition(n_subs, 'staggered')
+sdata = ad.partition(n_subs, 'staggered')
 A = ProjectionOperator(ig, sdata.geometry)
 
-f = [L2NormSquared(b=el/A[0].norm()) for el in sdata]
+f = [L2NormSquared(b=el) for el in sdata]
 f = BlockFunction(*f)
 # %%
 
-spdhg = SPDHG(f=f, g=g*(1/A[0].norm())**2, operator=A*(1/A[0].norm()), max_iteration=100 * n_subs,\
-      update_objective_interval=1,\
-      gamma=gamma, initial=fdk_pad)
+spdhg = SPDHG(f=f, g=g, operator=A, max_iteration=100 * n_subs,\
+      update_objective_interval=n_subs,\
+      gamma=gamma)
 #%%
-for i in range(100):
-     spdhg.run(   1  , verbose=2, print_interval=5)
-     show2D(spdhg.x)
+spdhg.run(epochs * n_subs, verbose=2, print_interval=n_subs)
 # %%
 
 #%%
@@ -205,4 +190,3 @@ res = {
 
 with open(fname, 'w') as f:
      json.dump(res, f)
-# %%
