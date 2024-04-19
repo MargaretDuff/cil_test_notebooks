@@ -37,7 +37,7 @@ show2D([ground_truth, recon], title = ['Ground Truth', 'FDK Reconstruction'], or
 # %%
 from cil.plugins.tigre import ProjectionOperator
 from cil.optimisation.algorithms import FISTA 
-from cil.optimisation.functions import LeastSquares, IndicatorBox, ZeroFunction, TotalVariation, WaveletNorm
+from cil.optimisation.functions import LeastSquares, IndicatorBox, ZeroFunction, TotalVariation, L1Sparsity
 from cil.optimisation.operators import GradientOperator, WaveletOperator
 from cil.optimisation.utilities import callbacks
 
@@ -175,7 +175,7 @@ plt.legend(fontsize=20)
 plt.title("PSNR for different values of alpha- wavelet recon" )
 plt.show()
 # %%
-# %% WAVELET HERE #TODO: 
+# %% WAVELET HERE 
 
 # Selection of the best regularization parametr using LS TV - FISTA
 alpha_min = 0.00001 * A.norm()/grad.norm()
@@ -194,7 +194,7 @@ W=WaveletOperator(ig, wname='db2')
 for i in range(alpha_n):
     alpha = alphas_ls[i]
     # Defining the regularization term with the new alpha
-    G = alpha * WaveletNorm(W)
+    G = alpha * L1Sparsity(W)
     # Setting up FISTA
     algo_wavelet = FISTA(initial = ig.allocate(), f = F, g = G)
     # Run FISTA
@@ -244,3 +244,4 @@ plt.show()
 #TODO: compare objective function decrease
 # %%
 #TODO: compare timings per iteration for the full 3D volume 
+# %%
