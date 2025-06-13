@@ -1,4 +1,5 @@
-#%%
+# %% dgff
+
 from cil.utilities import dataexample
 from cil.utilities.display import show2D
 from cil.recon import FDK
@@ -15,7 +16,7 @@ cmap = "gray"
 device = 'gpu'
 
 
-#%%
+# %%
 ground_truth = dataexample.SIMULATED_SPHERE_VOLUME.get()
 
 data = dataexample.SIMULATED_CONE_BEAM_DATA.get()
@@ -33,6 +34,19 @@ ig = ground_truth.geometry
 recon = FDK(absorption, image_geometry=ig).run()
 #%%
 show2D([ground_truth, recon], title = ['Ground Truth', 'FDK Reconstruction'], origin = 'upper', num_cols = 2)
+
+
+
+def symmetric_logarithm(arg,shift=1):
+    return ( np.log(arg.as_array()+shift)-np.log(shift))
+
+    
+    
+for i in range(0, 10):#
+    W= WaveletOperator(ig, wname='db2', level=i)
+    show2D(symmetric_logarithm((W.direct(ground_truth))), title=f"Wavelet transform db2 level {i}", size=(10,10))
+
+
 
 # %%
 from cil.plugins.tigre import ProjectionOperator
@@ -130,7 +144,7 @@ W=WaveletOperator(ig)
 for i in range(alpha_n):
     alpha = alphas_ls[i]
     # Defining the regularization term with the new alpha
-    G = alpha * WaveletNorm(W)
+    G = alpha * L1Sparsity(W)
     # Setting up FISTA
     algo_wavelet = FISTA(initial = ig.allocate(), f = F, g = G)
     # Run FISTA
